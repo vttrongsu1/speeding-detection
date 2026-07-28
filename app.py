@@ -627,11 +627,8 @@ def video_worker():
                     
                     update_global_vehicle(tracker_id, model.names[class_id], smooth_speed, max_speed, is_violating)
                     
-                    # Filter out noise speed under 5 km/h to prevent showing "0 km/h" for moving vehicles
-                    if smooth_speed < 5.0:
-                        labels.append(f"#{tracker_id} {model.names[class_id]} calculating...")
-                    else:
-                        labels.append(f"#{tracker_id} {model.names[class_id]} {int(round(smooth_speed))} km/h")
+                    # Show actual speed directly
+                    labels.append(f"#{tracker_id} {model.names[class_id]} {int(round(smooth_speed))} km/h")
             
             # Annotate this zone's bounding boxes and labels
             annotated_frame = bounding_box_annotator.annotate(
