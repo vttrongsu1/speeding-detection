@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hệ Thống Giám Sát Tốc Độ Giao Thông AI — Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #090c10;
+    --panel: #151b23;
+    --panel-border: #30363d;
+    --text-primary: #f0f6fc;
+    --text-secondary: #8b949e;
+    --cyan: #38bdf8;
+    --cyan-dim: rgba(56, 189, 248, 0.15);
+    --green: #10b981;
+    --green-dim: rgba(16, 185, 129, 0.15);
+    --red: #f43f5e;
+    --red-dim: rgba(244, 63, 94, 0.2);
+    --orange: #f59e0b;
+    --orange-dim: rgba(245, 158, 11, 0.15);
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Outfit', sans-serif;
+    --radius: 8px;
+    --glow-cyan: 0 0 15px rgba(56, 189, 248, 0.4);
+    --glow-red: 0 0 15px rgba(244, 63, 94, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    background-image: 
+      radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.05), transparent 40%),
+      radial-gradient(circle at 90% 90%, rgba(244, 63, 94, 0.03), transparent 45%),
+      linear-gradient(rgba(255, 255, 255, 0.005) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.005) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 20px 20px, 20px 20px;
+    color: var(--text-primary);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--panel-border);
+    background: rgba(21, 27, 35, 0.85);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .brand-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--cyan), #0284c7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: var(--glow-cyan);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .brand-text .title {
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.05em;
+    background: linear-gradient(90deg, #fff, var(--cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .brand-text .sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    letter-spacing: 0.05em;
+  }
+
+  .status-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .connection-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--panel-border);
+    padding: 8px 16px;
+    border-radius: 20px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+  }
+
+  .status-dot.online {
+    background: var(--green);
+    box-shadow: 0 0 10px var(--green);
+    animation: pulse 1.8s infinite;
+  }
+
+  .status-dot.offline {
+    background: var(--red);
+    box-shadow: 0 0 10px var(--red);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 32px;
+  }
+
+  .grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 1200px) {
+    .grid-layout { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    transition: border-color 0.3s ease;
+  }
+
+  .card:hover {
+    border-color: rgba(56, 189, 248, 0.3);
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--panel-border);
+    background: rgba(0,0,0,0.15);
+  }
+
+  .card-header .title {
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--cyan);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-header .subtitle {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .card-body {
+    padding: 24px;
+  }
+
+  /* Step Badges */
+  .step-badge {
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--mono);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Configuration Controls */
+  .control-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .control-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .control-item label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+  }
+
+  .control-item input, .control-item select {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--panel-border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+
+  .control-item input:focus, .control-item select:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.2);
+  }
+
+  /* 4-Points Coordinates Grid */
+  .points-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 900px) {
+    .points-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .point-box {
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .point-box-header {
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+  }
+
+  .point-box-header.p1 { color: #f43f5e; }
+  .point-box-header.p2 { color: #10b981; }
+  .point-box-header.p3 { color: #38bdf8; }
+  .point-box-header.p4 { color: #f59e0b; }
+
+  .coord-inputs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .coord-inputs input {
+    width: 50%;
+    padding: 6px 8px;
+    font-size: 13px;
+    font-family: var(--mono);
+    text-align: center;
+  }
+
+  /* Calibrate Canvas UI */
+  #calibrateContainer {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #calibratePlaceholder {
+    color: var(--text-secondary);
+    font-size: 15px;
+    font-weight: 500;
+    text-align: center;
+    padding: 40px;
+  }
+
+  #roiImg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  #roiCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+  }
+
+  /* Stream Player UI */
+  #streamContainer {
+    position: relative;
+    background: #000;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--panel-border);
+  }
+
+  #streamImg {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .live-indicator {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    background: rgba(9, 12, 16, 0.75);
+    border: 1px solid rgba(244, 63, 94, 0.4);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(8px);
+    box-shadow: var(--glow-red);
+  }
+
+  .live-indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--red);
+    animation: pulse 1.2s infinite;
+  }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  button {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 12px 24px;
+    border-radius: 6px;
+    border: 1px solid var(--panel-border);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  button:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: var(--text-secondary);
+  }
+
+  button.primary {
+    background: linear-gradient(135deg, var(--cyan), #0284c7);
+    border: none;
+    color: #000;
+    font-weight: 700;
+    box-shadow: var(--glow-cyan);
+  }
+
+  button.primary:hover {
+    background: linear-gradient(135deg, #7dd3fc, var(--cyan));
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.6);
+  }
+
+  button.run-btn {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    color: #fff;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: 0.05em;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    padding: 14px 28px;
+  }
+
+  button.run-btn:hover {
+    background: linear-gradient(135deg, #34d399, #10b981);
+    transform: translateY(-2px);
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.7);
+  }
+
+  button.danger:hover {
+    border-color: var(--red);
+    color: var(--red);
+    background: var(--red-dim);
+  }
+
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Statistics Cards */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: linear-gradient(180deg, var(--panel), #11151c);
+    border: 1px solid var(--panel-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    width: 100%;
+    background: var(--panel-border);
+  }
+
+  .stat-card.cyan::after { background: var(--cyan); }
+  .stat-card.green::after { background: var(--green); }
+  .stat-card.red::after { background: var(--red); }
+  .stat-card.orange::after { background: var(--orange); }
+
+  .stat-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .stat-value-container {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-weight: 800;
+    font-size: 40px;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+
+  .stat-card.red .stat-value { color: var(--red); text-shadow: 0 0 10px rgba(244, 63, 94, 0.2); }
+  .stat-card.cyan .stat-value { color: var(--cyan); text-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+  .stat-card.green .stat-value { color: var(--green); text-shadow: 0 0 10px rgba(16, 185, 129, 0.2); }
+
+  .stat-unit {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  .stat-footer {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* Log Table Panel */
+  .log-panel {
+    grid-column: 1 / -1;
+  }
+
+  .log-table-container {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    text-align: left;
+  }
+
+  th {
+    background: rgba(0,0,0,0.3);
+    padding: 12px 16px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--panel-border);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    font-family: var(--sans);
+  }
+
+  tr:hover td {
+    background: rgba(255,255,255,0.02);
+  }
+
+  .badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-family: var(--mono);
+    display: inline-block;
+  }
+
+  .badge.normal {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .badge.violation {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    animation: pulse 1s infinite alternate;
+  }
+
+  .empty-log {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 40px 0;
+    font-size: 14px;
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-logo">🌐</div>
+      <div class="brand-text">
+        <div class="title">SPEEDING AI</div>
+        <div class="sub">SPEED DETECTION &amp; CAMERA CALIBRATION</div>
+      </div>
+    </div>
+    <div class="status-container">
+      <div class="connection-status">
+        <span class="status-dot online" id="connDot"></span>
+        <span id="connText">Đang Kết Nối Backend...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    
+    <!-- STEP 1: LOAD VIDEO FILE -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <div class="title">
+          </span> Tải Nguồn Video
+        </div>
+        <div class="subtitle" id="frameSizeLabel">--- × ---</div>
+      </div>
+      <div class="card-body">
+        
+        <div class="control-group" style="margin-bottom: 0; display: flex; justify-content: center; align-items: center; width: 100%;">
+          <div class="control-item" style="width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 12px 0;">
+            <input type="file" id="videoFileInput" accept="video/*" style="display: none;" onchange="uploadVideoFile(event)">
+            <button id="btnLoadVideo" class="primary" style="height: 48px; width: 100%; max-width: 380px; font-size: 15px; font-weight: 700;" onclick="document.getElementById('videoFileInput').click()">
+              📁 CHỌN VÀ TẢI LÊN VIDEO
+            </button>
+            <div id="loadedFileLabel" style="margin-top: 10px; font-size: 13px; font-family: var(--mono); color: var(--text-secondary);">Chưa có video nào được nạp</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- MAIN WORKSPACE GRID -->
+    <div class="grid-layout">
+      
+      <!-- LEFT COLUMN: CALIBRATION OR STREAM -->
+      <div>
+        
+        <!-- STEP 2 & 3: CALIBRATION PANEL -->
+        <div class="card" id="calibrateCard">
+          <div class="card-header">
+            <div class="title">
+              </span> VÙNG ĐIỀU KHIỂN
+            </div>
+            <div class="subtitle" id="pointCount">Chọn 0/4 điểm</div>
+          </div>
+          <div class="card-body">
+            
+            <!-- Zone Manager Selector -->
+            <div style="margin-bottom: 16px; background: rgba(0,0,0,0.2); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--panel-border);">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;" id="zoneTabsContainer">
+                <!-- Zone tabs dynamically rendered -->
+              </div>
+            </div>
+            
+            <p style="font-size: 14px; color: var(--text-secondary); margin-top: 0; margin-bottom: 12px;">
+              <b>Hướng dẫn:</b> Click trực tiếp 4 điểm trên hình bên dưới (Top-Left ➔ Top-Right ➔ Bottom-Right ➔ Bottom-Left).
+            </p>
+
+            <div id="calibrateContainer">
+              <div id="calibratePlaceholder">Chưa có video được tải. Vui lòng nhấn nút chọn file để hiển thị khung hình hiệu chuẩn.</div>
+              <img id="roiImg" class="hidden" src="" alt="Vui lòng nhấn Tải Video">
+              <canvas id="roiCanvas" class="hidden"></canvas>
+            </div>
+            
+            <!-- 4 Points Input Grid -->
+            <div class="points-grid">
+              <div class="point-box">
+                <div class="point-box-header p1">🔴 Điểm 1 (Top-Left)</div>
+                <div class="coord-inputs">
+                  <input type="number" id="p1_x" placeholder="X" oninput="updatePointsFromInputs()">
+                  <input type="number" id="p1_y" placeholder="Y" oninput="updatePointsFromInputs()">
+                </div>
+              </div>
+              
+              <div class="point-box">
+                <div class="point-box-header p2">🟢 Điểm 2 (Top-Right)</div>
+                <div class="coord-inputs">
+                  <input type="number" id="p2_x" placeholder="X" oninput="updatePointsFromInputs()">
+                  <input type="number" id="p2_y" placeholder="Y" oninput="updatePointsFromInputs()">
+                </div>
+              </div>
+              
+              <div class="point-box">
+                <div class="point-box-header p3">🔵 Điểm 3 (Bottom-Right)</div>
+                <div class="coord-inputs">
+                  <input type="number" id="p3_x" placeholder="X" oninput="updatePointsFromInputs()">
+                  <input type="number" id="p3_y" placeholder="Y" oninput="updatePointsFromInputs()">
+                </div>
+              </div>
+              
+              <div class="point-box">
+                <div class="point-box-header p4">🟡 Điểm 4 (Bottom-Left)</div>
+                <div class="coord-inputs">
+                  <input type="number" id="p4_x" placeholder="X" oninput="updatePointsFromInputs()">
+                  <input type="number" id="p4_y" placeholder="Y" oninput="updatePointsFromInputs()">
+                </div>
+              </div>
+            </div>
+
+            <!-- Calibration Mode Switch -->
+            <div style="margin-top: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+              <input type="checkbox" id="autoCalibrateCheckbox" onchange="toggleAutoCalibrate(this.checked)" checked style="width: 18px; height: 18px; cursor: pointer;">
+              <label for="autoCalibrateCheckbox" style="font-size: 14px; font-weight: 600; cursor: pointer; color: var(--cyan);">Tự động căn chỉnh kích thước đường (Auto-Calibration)</label>
+            </div>
+
+            <!-- Parameters Input -->
+            <div class="control-group" style="margin-bottom: 16px;">
+              <div class="control-item">
+                <label for="roadWidth">Rộng làn đường (mét)</label>
+                <input type="number" id="roadWidth" value="" step="0.5" min="1" placeholder="Tự động tính..." oninput="updateZoneParams()" disabled>
+              </div>
+              <div class="control-item">
+                <label for="roadLength">Dài đoạn đường (mét)</label>
+                <input type="number" id="roadLength" value="" step="1" min="1" placeholder="Tự động tính..." oninput="updateZoneParams()" disabled>
+              </div>
+              <div class="control-item">
+                <label for="speedLimit">Tốc độ giới hạn (km/h)</label>
+                <input type="number" id="speedLimit" value="" step="5" min="10" placeholder="Ví dụ: 60" oninput="updateZoneParams()">
+              </div>
+            </div>
+            
+            <div style="margin-top: 16px; margin-bottom: 12px;">
+              <button onclick="addNewZone()" class="primary" style="width: 100%; height: 38px; font-weight: 600; background: linear-gradient(135deg, var(--green), #059669); border-radius: 6px;">
+                ➕ THÊM VÙNG MỚI (TẠO TAG MỚI)
+              </button>
+            </div>
+            
+            <div class="btn-row">
+              <button class="run-btn" id="btnStartRun" style="flex: 2;" onclick="startRun()" disabled>
+                ▶ BẮT ĐẦU CHẠY (ĐO TỐC ĐỘ)
+              </button>
+              <button onclick="undoPoint()">↺ Hoàn tác điểm</button>
+              <button class="danger" onclick="resetPoints()">Xóa vùng hiện tại</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVE STREAM PANEL -->
+        <div class="card hidden" id="streamCard">
+          <div class="card-header">
+            <div class="title">📺 Luồng Giám Sát Thời Gian Thực</div>
+            <div class="subtitle" id="fpsDisplay">-- FPS</div>
+          </div>
+          <div class="card-body" style="padding: 16px;">
+            
+            <div id="streamContainer" style="margin-bottom: 16px;">
+              <img id="streamImg" src="" alt="Live Stream">
+              <div class="live-indicator">
+                <span class="live-indicator-dot"></span>LIVE MONITORING
+              </div>
+            </div>
+            
+            <!-- Calibration Info Display -->
+            <div id="calibrationInfoDisplay" style="margin-bottom: 16px; padding: 12px; background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 6px; font-size: 14px; font-family: var(--sans);">
+              <!-- Calibration status dynamically updated here -->
+            </div>
+            
+            <div class="btn-row">
+              <button onclick="switchToCalibrate(true)">📐 Dừng &amp; Chỉnh Lại Tọa Độ</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN: REALTIME STATS SIDEBAR -->
+      <div class="stats-grid">
+        
+        <div class="stat-card cyan">
+          <div class="stat-label">Số Xe Trong Vùng Đo</div>
+          <div class="stat-value-container">
+            <div class="stat-value" id="statActive">0</div>
+            <div class="stat-unit">xe</div>
+          </div>
+          <div class="stat-footer">Đang nằm trong vùng giám sát phối cảnh</div>
+        </div>
+
+        <div class="stat-card green">
+          <div class="stat-label">Tốc Độ Trung Bình</div>
+          <div class="stat-value-container">
+            <div class="stat-value" id="statAvgSpeed">0</div>
+            <div class="stat-unit">km/h</div>
+          </div>
+          <div class="stat-footer">Tính từ các xe đang di chuyển tích cực</div>
+        </div>
+
+        <div class="stat-card red">
+          <div class="stat-label">Số Xe Vi Phạm Tốc Độ</div>
+          <div class="stat-value-container">
+            <div class="stat-value" id="statOverspeed">0</div>
+            <div class="stat-unit">xe</div>
+          </div>
+          <div class="stat-footer">Vượt quá tốc độ giới hạn cho phép</div>
+        </div>
+
+        <div class="stat-card orange">
+          <div class="stat-label">Tổng Số Xe Đi Qua</div>
+          <div class="stat-value-container">
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-unit">xe</div>
+          </div>
+          <div class="stat-footer">Tổng số lượng xe đã ghi nhận</div>
+        </div>
+
+      </div>
+
+      <!-- LOGS TABLE PANEL -->
+      <div class="card log-panel">
+        <div class="card-header">
+          <div class="title">📋 Nhật Ký Giám Sát Tốc Độ Xe Chạy</div>
+        </div>
+        <div class="card-body" style="padding: 0;">
+          <div class="log-table-container">
+            <table id="logTable">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>ID Xe</th>
+                  <th>Loại Phương Tiện</th>
+                  <th>Tốc độ hiện tại</th>
+                  <th>Tốc độ cao nhất</th>
+                  <th>Trạng thái</th>
+                </tr>
+              </thead>
+              <tbody id="logTableBody">
+                <tr>
+                  <td colspan="6" class="empty-log">Chưa có phương tiện nào đi qua vùng giám sát.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    const img = document.getElementById('roiImg');
+    const canvas = document.getElementById('roiCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let zones = [];
+    let activeZoneId = 1;
+    let loadRetryTimer = null;
+    
+    const pointColors = ['#f43f5e', '#10b981', '#38bdf8', '#f59e0b']; // Red, Green, Cyan, Orange for points
+    const pointLabels = ['1: Top-Left', '2: Top-Right', '3: Bottom-Right', '4: Bottom-Left'];
+    const zoneBorderColors = ['#f59e0b', '#06b6d4', '#d946ef', '#eab308']; // Orange, Cyan, Purple, Yellow for zones
+
+    // Automatic retry on image load error to handle any temporary network delay
+    img.onerror = () => {
+      clearTimeout(loadRetryTimer);
+      loadRetryTimer = setTimeout(() => {
+        if (img.src && !img.src.endsWith('/')) {
+          img.src = '/first_frame.jpg?t=' + new Date().getTime();
+        }
+      }, 300);
+    };
+
+    // Resize canvas based on displayed image size
+    function sizeCanvas() {
+      if (img.classList.contains('hidden')) return;
+      canvas.width = img.clientWidth;
+      canvas.height = img.clientHeight;
+      redraw();
+    }
+    img.onload = sizeCanvas;
+    window.addEventListener('resize', sizeCanvas);
+    if (img.complete) sizeCanvas();
+
+    function renderZoneTabs() {
+      const container = document.getElementById('zoneTabsContainer');
+      if (!container) return;
+      
+      container.innerHTML = zones.map(z => {
+        const isActive = z.id === activeZoneId;
+        const color = zoneBorderColors[(z.id - 1) % zoneBorderColors.length];
+        const btnStyle = isActive 
+          ? `background: ${color}; color: #000; font-weight: 700; border-color: ${color};` 
+          : `border-color: ${color}40; color: ${color};`;
+        
+        return `
+          <div style="display: inline-flex; align-items: center; gap: 4px; margin-right: 4px;">
+            <button onclick="selectZone(${z.id})" style="height: 32px; padding: 0 10px; font-size: 13px; ${btnStyle}">
+              ${z.name}
+            </button>
+            ${zones.length > 1 ? `
+              <span onclick="deleteZone(${z.id})" style="cursor: pointer; color: var(--red); font-size: 14px; padding: 0 4px; font-weight: bold;" title="Xóa vùng này">✕</span>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectZone(id) {
+      activeZoneId = id;
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (zone) {
+        if (zone.auto_calibrate === undefined) {
+          zone.auto_calibrate = (zone.road_width === null || zone.road_width === undefined);
+        }
+        
+        const checkbox = document.getElementById('autoCalibrateCheckbox');
+        if (checkbox) {
+          checkbox.checked = !!zone.auto_calibrate;
+          toggleAutoCalibrate(checkbox.checked);
+        }
+        
+        document.getElementById('roadWidth').value = (zone.road_width !== undefined && zone.road_width !== null) ? zone.road_width : '';
+        document.getElementById('roadLength').value = (zone.road_length !== undefined && zone.road_length !== null) ? zone.road_length : '';
+        document.getElementById('speedLimit').value = (zone.speed_limit !== undefined && zone.speed_limit !== null) ? zone.speed_limit : '';
+        
+        syncPointsInputsForZone(zone);
+      }
+      renderZoneTabs();
+      redraw();
+    }
+
+    function toggleAutoCalibrate(checked) {
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (zone) {
+        zone.auto_calibrate = checked;
+        const wInput = document.getElementById('roadWidth');
+        const lInput = document.getElementById('roadLength');
+        if (checked) {
+          zone.road_width = null;
+          zone.road_length = null;
+          wInput.value = '';
+          lInput.value = '';
+          wInput.disabled = true;
+          lInput.disabled = true;
+          wInput.placeholder = 'Tự động tính...';
+          lInput.placeholder = 'Tự động tính...';
+        } else {
+          wInput.disabled = false;
+          lInput.disabled = false;
+          wInput.placeholder = 'Ví dụ: 32';
+          lInput.placeholder = 'Ví dụ: 140';
+        }
+      }
+    }
+
+    function syncPointsInputsForZone(zone) {
+      for (let i = 1; i <= 4; i++) {
+        const inputX = document.getElementById(`p${i}_x`);
+        const inputY = document.getElementById(`p${i}_y`);
+        const pt = zone.points[i - 1];
+        if (pt) {
+          inputX.value = pt.x;
+          inputY.value = pt.y;
+        } else {
+          inputX.value = '';
+          inputY.value = '';
+        }
+      }
+    }
+
+    function updatePointsFromInputs() {
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (!zone) return;
+      
+      const newPoints = [];
+      for (let i = 1; i <= 4; i++) {
+        const xVal = parseFloat(document.getElementById(`p${i}_x`).value);
+        const yVal = parseFloat(document.getElementById(`p${i}_y`).value);
+        if (!isNaN(xVal) && !isNaN(yVal)) {
+          newPoints.push({ x: Math.round(xVal), y: Math.round(yVal) });
+        }
+      }
+      zone.points = newPoints;
+      redraw();
+    }
+
+    function updateZoneParams() {
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (zone) {
+        const wVal = document.getElementById('roadWidth').value.trim();
+        const lVal = document.getElementById('roadLength').value.trim();
+        const sVal = document.getElementById('speedLimit').value.trim();
+        
+        zone.road_width = wVal !== '' ? parseFloat(wVal) : null;
+        zone.road_length = lVal !== '' ? parseFloat(lVal) : null;
+        zone.speed_limit = sVal !== '' ? parseFloat(sVal) : null;
+      }
+    }
+
+    function addNewZone() {
+      const nextId = zones.length > 0 ? Math.max(...zones.map(z => z.id)) + 1 : 1;
+      
+      zones.push({
+        id: nextId,
+        name: `Vùng ${nextId}`,
+        points: [],
+        road_width: null,
+        road_length: null,
+        speed_limit: null,
+        auto_calibrate: true
+      });
+      
+      activeZoneId = nextId;
+      selectZone(nextId);
+    }
+
+    function deleteZone(id) {
+      if (zones.length <= 1) return;
+      zones = zones.filter(z => z.id !== id);
+      if (activeZoneId === id) {
+        activeZoneId = zones[0].id;
+      }
+      selectZone(activeZoneId);
+    }
+
+    // Redraw points and trapezoid polygons for all zones
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      const sx = canvas.width / (img.naturalWidth || 1920);
+      const sy = canvas.height / (img.naturalHeight || 1080);
+      
+      zones.forEach(z => {
+        const isActive = z.id === activeZoneId;
+        const color = zoneBorderColors[(z.id - 1) % zoneBorderColors.length];
+        
+        if (z.points.length > 0) {
+          ctx.lineWidth = isActive ? 3 : 1.5;
+          if (!isActive) {
+            ctx.setLineDash([4, 4]);
+          } else {
+            ctx.setLineDash([]);
+          }
+          ctx.strokeStyle = color;
+          
+          ctx.beginPath();
+          ctx.moveTo(z.points[0].x * sx, z.points[0].y * sy);
+          for (let i = 1; i < z.points.length; i++) {
+            ctx.lineTo(z.points[i].x * sx, z.points[i].y * sy);
+          }
+          if (z.points.length === 4) {
+            ctx.lineTo(z.points[0].x * sx, z.points[0].y * sy);
+            ctx.closePath();
+            ctx.fillStyle = isActive ? `${color}20` : `${color}08`;
+            ctx.fill();
+          }
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        
+        // Draw points only for the active selected zone
+        if (isActive) {
+          z.points.forEach((p, i) => {
+            const px = p.x * sx;
+            const py = p.y * sy;
+            
+            ctx.beginPath();
+            ctx.arc(px, py, 6, 0, 2 * Math.PI);
+            ctx.fillStyle = pointColors[i];
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.fillText(pointLabels[i], px + 10, py + 4);
+          });
+        }
+      });
+
+      const activeZone = zones.find(z => z.id === activeZoneId);
+      const ptCount = activeZone ? activeZone.points.length : 0;
+      document.getElementById('pointCount').innerText = `Chọn ${ptCount}/4 điểm`;
+    }
+
+    // Capture point click on canvas
+    canvas.addEventListener('click', (e) => {
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (!zone) return;
+      if (zone.points.length >= 4) return;
+      
+      const r = canvas.getBoundingClientRect();
+      const clickX = e.clientX - r.left;
+      const clickY = e.clientY - r.top;
+      
+      const sx = (img.naturalWidth || 1920) / canvas.width;
+      const sy = (img.naturalHeight || 1080) / canvas.height;
+      
+      zone.points.push({ x: Math.round(clickX * sx), y: Math.round(clickY * sy) });
+      
+      syncPointsInputsForZone(zone);
+      redraw();
+    });
+
+    // Right click to undo point
+    canvas.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      undoPoint();
+    });
+
+    function undoPoint() {
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (zone) {
+        zone.points.pop();
+        syncPointsInputsForZone(zone);
+        redraw();
+      }
+    }
+
+    function resetPoints() {
+      const zone = zones.find(z => z.id === activeZoneId);
+      if (zone) {
+        zone.points = [];
+        syncPointsInputsForZone(zone);
+        redraw();
+      }
+    }
+
+    function uploadVideoFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const btn = document.getElementById('btnLoadVideo');
+      const originalText = btn.innerText;
+      btn.disabled = true;
+      btn.innerText = '⌛ Đang tải tệp...';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      fetch('/upload_video', {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(res => {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        
+        const label = document.getElementById('loadedFileLabel');
+        if (label) label.innerText = 'Đang chạy: ' + file.name;
+        
+        if (res.success) {
+          document.getElementById('calibratePlaceholder').classList.add('hidden');
+          img.classList.remove('hidden');
+          canvas.classList.remove('hidden');
+          
+          if (res.zones && res.zones.length > 0) {
+            zones = res.zones.map(z => ({
+              ...z,
+              auto_calibrate: true
+            }));
+            activeZoneId = zones[0].id;
+            selectZone(activeZoneId);
+          }
+          
+          img.src = '/first_frame.jpg?t=' + new Date().getTime();
+          switchToCalibrate();
+          document.getElementById('btnStartRun').disabled = false;
+        } else {
+          alert(res.error || "Không thể tải lên video!");
+        }
+      })
+      .catch(err => {
+        btn.disabled = false;
+        btn.innerText = originalText;
+        alert("Lỗi tải tệp lên Backend!");
+      });
+    }
+
+    // STEP 3: Start Run ("CHẠY") Handler
+    function startRun() {
+      // Validate all zones have exactly 4 points and parameters filled
+      for (const z of zones) {
+        if (z.points.length !== 4) {
+          alert(`Vui lòng chọn đủ 4 điểm tọa độ hình thang cho "${z.name}"!`);
+          return;
+        }
+        if (!z.auto_calibrate) {
+          if (z.road_width === undefined || z.road_width === null || isNaN(z.road_width) ||
+              z.road_length === undefined || z.road_length === null || isNaN(z.road_length)) {
+            alert(`Vui lòng điền đầy đủ các thông số: Rộng làn đường, Dài đoạn đường cho "${z.name}" hoặc chọn Tự động căn chỉnh!`);
+            return;
+          }
+        }
+        if (z.speed_limit === undefined || z.speed_limit === null || isNaN(z.speed_limit)) {
+          alert(`Vui lòng điền tốc độ giới hạn cho "${z.name}"!`);
+          return;
+        }
+      }
+
+      const btnRun = document.getElementById('btnStartRun');
+      btnRun.disabled = true;
+      btnRun.innerText = '⌛ ĐANG KHỞI CHẠY...';
+
+      fetch('/start_processing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zones: zones })
+      })
+      .then(r => r.json())
+      .then(res => {
+        btnRun.disabled = false;
+        btnRun.innerText = '▶ BẮT ĐẦU CHẠY (ĐO TỐC ĐỘ)';
+        if (res.success) {
+          startLiveStream();
+        } else {
+          alert(res.error || "Lỗi khởi chạy!");
+        }
+      })
+      .catch(err => {
+        btnRun.disabled = false;
+        btnRun.innerText = '▶ BẮT ĐẦU CHẠY (ĐO TỐC ĐỘ)';
+        alert("Lỗi kết nối đến Backend!");
+      });
+    }
+
+    function startLiveStream() {
+      document.getElementById('calibrateCard').classList.add('hidden');
+      document.getElementById('streamCard').classList.remove('hidden');
+      document.getElementById('streamImg').src = '/stream';
+      pollStats();
+    }
+
+    function switchToCalibrate(notifyBackend = false) {
+      if (notifyBackend) {
+        fetch('/stop_processing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+      document.getElementById('streamImg').src = '';
+      document.getElementById('streamCard').classList.add('hidden');
+      document.getElementById('calibrateCard').classList.remove('hidden');
+      setTimeout(sizeCanvas, 200);
+    }
+
+    // Metrics polling
+    let isPolling = false;
+    function pollStats() {
+      if (document.getElementById('streamCard').classList.contains('hidden')) {
+        isPolling = false;
+        return;
+      }
+      isPolling = true;
+
+      fetch('/stats')
+      .then(r => r.json())
+      .then(s => {
+        document.getElementById('connDot').className = 'status-dot online';
+        document.getElementById('connText').innerText = 'Backend Trực Tuyến';
+
+        if (s.frame_w > 0) {
+          document.getElementById('frameSizeLabel').innerText = `${s.frame_w} × ${s.frame_h}`;
+        }
+
+        document.getElementById('statActive').innerText = s.active_vehicles;
+        document.getElementById('statAvgSpeed').innerText = s.avg_speed;
+        document.getElementById('statOverspeed').innerText = s.overspeed_count;
+        document.getElementById('statTotal').innerText = s.total_vehicles;
+        document.getElementById('fpsDisplay').innerText = s.fps.toFixed(1) + ' FPS';
+
+        // Update calibration info display in streaming view
+        if (s.zones && s.zones.length > 0) {
+          const infoContainer = document.getElementById('calibrationInfoDisplay');
+          if (infoContainer) {
+            infoContainer.innerHTML = s.zones.map(z => {
+              const statusText = z.calibration_status || 'Không chạy tự động căn chỉnh';
+              const wText = (z.road_width !== undefined && z.road_width !== null && z.road_width > 0) ? `${z.road_width}m` : 'Đang tính...';
+              const lText = (z.road_length !== undefined && z.road_length !== null && z.road_length > 0) ? `${z.road_length}m` : 'Đang tính...';
+              return `
+                <div style="margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 6px;">
+                  <div><strong>${z.name}</strong>: <span style="color: var(--cyan);">${statusText}</span></div>
+                  <div>Kích thước ước lượng: <strong>Rộng: ${wText} | Dài: ${lText}</strong></div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+
+        renderTable(s.vehicle_logs);
+
+        if (isPolling) setTimeout(pollStats, 400);
+      })
+      .catch(() => {
+        document.getElementById('connDot').className = 'status-dot offline';
+        document.getElementById('connText').innerText = 'Mất Kết Nối Backend';
+        if (isPolling) setTimeout(pollStats, 2000);
+      });
+    }
+
+    // Render vehicle logs table
+    function renderTable(logs) {
+      const tbody = document.getElementById('logTableBody');
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-log">Chưa có phương tiện nào đi qua vùng giám sát.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = logs.map(l => {
+        const badgeClass = l.violating ? 'badge violation' : 'badge normal';
+        const badgeText = l.violating ? 'Vượt Quá Tốc Độ' : 'Bình Thường';
+        const speedClass = l.violating ? 'text-red font-weight-bold' : '';
+        return `
+          <tr>
+            <td style="font-family: var(--mono); font-size: 13px;">${l.timestamp}</td>
+            <td style="font-family: var(--mono); font-weight: 600;">#${l.track_id}</td>
+            <td style="text-transform: capitalize;">${l.class === 'car' ? '🚗 Ô tô' : l.class === 'motorcycle' ? '🏍️ Xe máy' : l.class === 'bus' ? '🚌 Xe buýt' : l.class === 'truck' ? '🚚 Xe tải' : l.class}</td>
+            <td class="${speedClass}" style="font-family: var(--mono); font-weight: 700;">${l.current_speed} km/h</td>
+            <td style="font-family: var(--mono); font-weight: 700; color: #fff;">${l.max_speed} km/h</td>
+            <td><span class="${badgeClass}">${badgeText}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function checkBackendConnection() {
+      fetch('/stats')
+      .then(r => r.json())
+      .then(s => {
+        document.getElementById('connDot').className = 'status-dot online';
+        document.getElementById('connText').innerText = 'Backend Trực Tuyến';
+        
+        if (s.frame_w > 0) {
+          document.getElementById('frameSizeLabel').innerText = `${s.frame_w} × ${s.frame_h}`;
+          document.getElementById('calibratePlaceholder').classList.add('hidden');
+          img.classList.remove('hidden');
+          canvas.classList.remove('hidden');
+          document.getElementById('btnStartRun').disabled = false;
+          
+          const label = document.getElementById('loadedFileLabel');
+          if (label && s.source) {
+            const baseName = s.source.split(/[\\/]/).pop();
+            label.innerText = 'Đang chạy: ' + baseName;
+          }
+          
+          if (s.zones && s.zones.length > 0) {
+            zones = s.zones.map(z => ({
+              ...z,
+              auto_calibrate: z.auto_calibrate !== undefined ? z.auto_calibrate : (z.road_width === null || z.road_width === undefined)
+            }));
+            activeZoneId = zones[0].id;
+            selectZone(activeZoneId);
+          }
+          img.src = '/first_frame.jpg?t=' + new Date().getTime();
+        } else {
+          document.getElementById('calibratePlaceholder').classList.remove('hidden');
+          img.classList.add('hidden');
+          canvas.classList.add('hidden');
+          img.src = '';
+          document.getElementById('btnStartRun').disabled = true;
+        }
+        
+        if (s.running && !s.paused_for_calibration) {
+          startLiveStream();
+        } else {
+          switchToCalibrate();
+        }
+      })
+      .catch(() => {
+        document.getElementById('connDot').className = 'status-dot offline';
+        document.getElementById('connText').innerText = 'Không thể kết nối đến Backend';
+      });
+    }
+
+    window.onload = () => {
+      checkBackendConnection();
+    };
+  </script>
+</body>
+</html>
