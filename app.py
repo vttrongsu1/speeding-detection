@@ -449,9 +449,9 @@ def video_worker():
     # Setup ByteTrack (Global tracker for unique consistent IDs)
     byte_track = sv.ByteTrack(
         frame_rate=fps,
-        track_activation_threshold=0.35,
+        track_activation_threshold=0.25,
         lost_track_buffer=30,
-        minimum_matching_threshold=0.8
+        minimum_matching_threshold=0.3
     )
     
     # Setup Supervision Annotators
@@ -492,7 +492,7 @@ def video_worker():
         frame_idx += 1
         
         # 1. Run YOLO object detection globally
-        result = model(frame, imgsz=640, conf=0.35, classes=detect_classes, verbose=False)[0]
+        result = model(frame, imgsz=640, conf=0.25, classes=detect_classes, verbose=False)[0]
         global_detections = sv.Detections.from_ultralytics(result)
         
         # 2. Update track IDs globally
