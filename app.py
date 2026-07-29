@@ -424,6 +424,24 @@ def video_worker():
     print(f"[Worker] Loading YOLO model: {model_path}")
     model = YOLO(model_path)
     
+    # Dynamically determine vehicle classes to detect based on model.names
+    std_widths = {
+        "car": 1.8,
+        "truck": 2.5,
+        "bus": 2.5,
+        "motorcycle": 0.8,
+        "pickup": 1.8
+    }
+    detect_classes = []
+    for cid, cname in model.names.items():
+        if cname.lower() in std_widths:
+            detect_classes.append(cid)
+            
+    if not detect_classes:
+        detect_classes = [2, 3, 5, 7] # fallback
+        
+    print(f"[Worker] Dynamic vehicle classes detected: {detect_classes} {[model.names[c] for c in detect_classes]}")
+    
     fps = cap.get(cv2.CAP_PROP_FPS)
     if fps <= 0 or np.isnan(fps):
         fps = 25.0
@@ -474,7 +492,7 @@ def video_worker():
         frame_idx += 1
         
         # 1. Run YOLO object detection globally
-        result = model(frame, imgsz=640, conf=0.35, classes=[2, 3, 5, 7], verbose=False)[0]
+        result = model(frame, imgsz=640, conf=0.35, classes=detect_classes, verbose=False)[0]
         global_detections = sv.Detections.from_ultralytics(result)
         
         # 2. Update track IDs globally
@@ -504,15 +522,16 @@ def video_worker():
             if auto_calibrate.get(zid, False) and zone_detections.tracker_id is not None:
                 updated_mapper = False
                 for tracker_id, class_id, box in zip(zone_detections.tracker_id, zone_detections.class_id, zone_detections.xyxy):
-                    cls_name = model.names[class_id]
+                    cls_name_lower = model.names[class_id].lower()
                     std_widths = {
                         "car": 1.8,
                         "truck": 2.5,
                         "bus": 2.5,
-                        "motorcycle": 0.8
+                        "motorcycle": 0.8,
+                        "pickup": 1.8
                     }
-                    if cls_name in std_widths:
-                        w_std = std_widths[cls_name]
+                    if cls_name_lower in std_widths:
+                        w_std = std_widths[cls_name_lower]
                         w_px = box[2] - box[0]
                         y_img = box[3]
                         y_horizon = calibration_horizon[zid]
