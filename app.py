@@ -495,8 +495,25 @@ def video_worker():
         result = model(frame, imgsz=640, conf=0.25, classes=detect_classes, verbose=False)[0]
         global_detections = sv.Detections.from_ultralytics(result)
         
-        # 2. Update track IDs globally
+        # Map bounding box coordinates to original class IDs
+        box_to_class = {}
+        if global_detections.xyxy is not None and global_detections.class_id is not None:
+            for box, cid in zip(global_detections.xyxy, global_detections.class_id):
+                box_to_class[tuple(box)] = cid
+                
+        # Temporarily make detections class-agnostic to prevent tracking ID splits when class guesses flicker
+        if global_detections.class_id is not None:
+            global_detections.class_id = np.zeros_like(global_detections.class_id)
+            
+        # 2. Update track IDs globally (class-agnostic tracking)
         global_detections = byte_track.update_with_detections(global_detections)
+        
+        # Restore the original class IDs for the tracked detections
+        if global_detections.xyxy is not None and global_detections.class_id is not None:
+            restored_classes = []
+            for box in global_detections.xyxy:
+                restored_classes.append(box_to_class.get(tuple(box), 0))
+            global_detections.class_id = np.array(restored_classes, dtype=np.int32)
         
         annotated_frame = frame.copy()
         all_active_tids = set()
