@@ -451,7 +451,7 @@ def video_worker():
         frame_rate=fps,
         track_activation_threshold=0.25,
         lost_track_buffer=30,
-        minimum_matching_threshold=0.3
+        minimum_matching_threshold=0.8
     )
     
     # Setup Supervision Annotators
@@ -630,8 +630,8 @@ def video_worker():
                     track_frame_counts[tracker_id] += 1
                     coordinates[tracker_id].append((frame_idx, point[0], point[1]))
                     
-                    # Warm-up period: minimum 8 frames and 5 coordinate points
-                    if track_frame_counts[tracker_id] < 8 or len(coordinates[tracker_id]) < 5:
+                    # Warm-up period: minimum 4 frames and 3 coordinate points
+                    if track_frame_counts[tracker_id] < 4 or len(coordinates[tracker_id]) < 3:
                         labels.append(f"#{tracker_id} {model.names[class_id]} calculating...")
                         continue
                         
