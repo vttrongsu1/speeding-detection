@@ -625,14 +625,15 @@ def video_worker():
             labels = []
             
             if zone_detections.tracker_id is not None:
-                for tracker_id, class_id, point in zip(zone_detections.tracker_id, zone_detections.class_id, points):
+                confidences = zone_detections.confidence if zone_detections.confidence is not None else [1.0] * len(zone_detections)
+                for tracker_id, class_id, conf, point in zip(zone_detections.tracker_id, zone_detections.class_id, confidences, points):
                     all_active_tids.add(tracker_id)
                     track_frame_counts[tracker_id] += 1
                     coordinates[tracker_id].append((frame_idx, point[0], point[1]))
                     
                     # Warm-up period: minimum 4 frames and 3 coordinate points
                     if track_frame_counts[tracker_id] < 4 or len(coordinates[tracker_id]) < 3:
-                        labels.append(f"#{tracker_id} {model.names[class_id]} calculating...")
+                        labels.append(f"#{tracker_id} {model.names[class_id]} calculating... ({conf:.2f})")
                         continue
                         
                     hist = list(coordinates[tracker_id])
@@ -663,8 +664,8 @@ def video_worker():
                     
                     update_global_vehicle(tracker_id, model.names[class_id], smooth_speed, max_speed, is_violating)
                     
-                    # Show actual speed directly
-                    labels.append(f"#{tracker_id} {model.names[class_id]} {int(round(smooth_speed))} km/h")
+                    # Show actual speed directly along with conf
+                    labels.append(f"#{tracker_id} {model.names[class_id]} {int(round(smooth_speed))} km/h ({conf:.2f})")
             
             # Annotate this zone's bounding boxes and labels
             annotated_frame = bounding_box_annotator.annotate(
